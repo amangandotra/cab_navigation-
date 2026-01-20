@@ -264,45 +264,64 @@ class SmartCabApp:
         type_map = {"cab": "1", "auto": "2", "bike": "3"}
         choice = type_map[self.vehicle_var.get()]
 
+        # UI feedback immediately
         self.set_status("Comparing using Gemini…")
         self.log("Comparing options using Gemini…")
         self.progress.start(10)
+        self.book_btn.config(state="disabled")
 
-        def task():
+        def compare_task():
             winner = compare_and_choose(self.uber_data, self.ola_data, self.rapido_data, choice)
 
-            def after():
-                self.progress.stop()
+            def after_compare():
                 if winner == "NoServiceFound":
+                    self.progress.stop()
                     self.set_status("No suitable service found", warn=True)
                     self.log("No suitable service found")
+                    self.book_btn.config(state="normal")
                     return
 
-                self.set_status(f"Best option: {winner}")
+                # Show selected app immediately
+                self.set_status(f"Selected: {winner}")
                 self.log(f"Best option selected: {winner}")
 
-                # Booking
+                # Switch to logs tab automatically
+                self.tabs.select(self.logs_tab)
+
+                # Start booking in background
                 self.set_status(f"Booking on {winner}…")
                 self.log(f"Booking ride on {winner}…")
 
-                if winner == "Uber":
-                    res = uber.book_ride(self.pickup_var.get(), self.dest_var.get(), self.vehicle_var.get())
-                elif winner == "Ola":
-                    res = ola.book_ride(self.pickup_var.get(), self.dest_var.get(), self.vehicle_var.get())
-                elif winner == "Rapido":
-                    res = rapido.book_ride(self.pickup_var.get(), self.dest_var.get(), self.vehicle_var.get())
-                else:
+                threading.Thread(target=booking_task, args=(winner,), daemon=True).start()
+
+            self.root.after(0, after_compare)
+
+        def booking_task(winner):
+            # Heavy / blocking automation here
+            if winner == "Uber":
+                res = uber.book_ride(self.pickup_var.get(), self.dest_var.get(), self.vehicle_var.get())
+            elif winner == "Ola":
+                res = ola.book_ride(self.pickup_var.get(), self.dest_var.get(), self.vehicle_var.get())
+            elif winner == "Rapido":
+                res = rapido.book_ride(self.pickup_var.get(), self.dest_var.get(), self.vehicle_var.get())
+            else:
+                res = None
+
+            def after_booking():
+                self.progress.stop()
+                if res is None:
                     self.set_status("Booking failed", warn=True)
                     self.log("Booking failed")
-                    return
+                else:
+                    self.set_status("Booking initiated successfully ✓")
+                    self.log("Booking initiated successfully")
+                    messagebox.showinfo("Success", f"Ride booking initiated on {winner}.")
 
-                self.set_status("Booking initiated successfully ✓")
-                self.log("Booking initiated successfully")
-                messagebox.showinfo("Success", f"Ride booking initiated on {winner}.")
+                self.book_btn.config(state="normal")
 
-            self.root.after(0, after)
+            self.root.after(0, after_booking)
 
-        threading.Thread(target=task, daemon=True).start()
+        threading.Thread(target=compare_task, daemon=True).start()
 
 
 if __name__ == "__main__":
