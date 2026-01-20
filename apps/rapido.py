@@ -3,8 +3,12 @@ from agent_runner import run_task_sync
 def get_prices(pickup, destination):
     goal = f"""
 Open Rapido app.
+If pickup or destination is not set,
 Set pickup location to "{pickup}".
 Set destination to "{destination}".
+and if already set, verify they are correct.
+if not correct, update them.
+
 Wait for price info.
 
 Extract all ride options.

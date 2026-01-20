@@ -27,8 +27,11 @@ Return ONLY the JSON array text.
 def book_ride(pickup, destination, vehicle_type):
     goal = f"""
 Open Ola app.
-Set pickup to "{pickup}".
+If pickup or destination is not set,
+Set pickup location to "{pickup}".
 Set destination to "{destination}".
+and if already set, verify they are correct.
+if not correct, update them.
 
 Vehicle type preference: {vehicle_type}
 
